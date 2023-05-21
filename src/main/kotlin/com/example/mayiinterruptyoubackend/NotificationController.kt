@@ -12,15 +12,16 @@ import io.github.cdimascio.dotenv.dotenv
 class NotificationController {
     val dotenv = dotenv()
     var API_KEY = dotenv["API_KEY"]
+    var FCM_TOKEN = dotenv["FCM_TOKEN"]
 
     @GetMapping("/send-notification")
-    fun sendNotification(): String {
-        val url = URL("https://newsapi.org/v2/top-headlines?country=us&apiKey=$API_KEY")
+    fun sendNotification(subject: String?): String {
+        val url = URL("https://newsapi.org/v2/top-headlines?country=us&category=$subject&apiKey=$API_KEY")
         val newsJson = ObjectMapper().readTree(url)
         val firstArticle = newsJson.get("articles").get(0)
         val title = firstArticle.get("title").asText()
         val image = firstArticle.get("urlToImage").asText()
-        val description = firstArticle.get("description").asText()
+        val articleURL = firstArticle.get("url").asText()
 
         val notification = Notification.builder()
             .setTitle("News")
@@ -28,9 +29,13 @@ class NotificationController {
             .setImage(image)
             .build()
 
+        val data = mutableMapOf<String, String>()
+        data["url"] = articleURL
+
         val message = com.google.firebase.messaging.Message.builder()
             .setNotification(notification)
-            .setToken("cTcBh1a8SpOn_08niWIQqq:APA91bEuDy18PKkp9xVxjnR6wZU13Qx00gDITE_I9gpxhkICi6eYNlzuuuXZ_B_WzFwFg_iCdsUiCIkVTLbz8aXfMQFLhXG3ZLwyN1cpGggTXZ6ZQsCgIbNvqTXiLDHbfgjSNIvTse8K")
+            .setToken(FCM_TOKEN)
+            .putAllData(data)
             .build()
 
         FirebaseMessaging.getInstance().send(message)
